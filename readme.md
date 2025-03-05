@@ -9,18 +9,22 @@ Este projeto implementa um sistema bancário simples utilizando a linguagem Pyth
 </p>
 
 ## Objetivo do Projeto
-O projeto tem como objetivo criar um sistema bancário funcional com operações básicas de movimentação financeira, utilizando uma abordagem simples e eficiente para manipulação de valores em conta.
+O projeto tem como objetivo criar um sistema bancário funcional com operações básicas de movimentação financeira, utilizando uma abordagem simples e eficiente para manipulação de valores em conta. Cada operação é modularizada em funções.
 
 ## Funcionalidades
 - **Depósito**: Permite adicionar valores positivos à conta.
 - **Saque**: Permite até 3 saques diários com limite de R$ 500,00 por saque.
 - **Extrato**: Lista todos os depósitos e saques realizados, exibindo o saldo final.
+- **Criar Usuário**: Cria um usuário.
+- **Criar Conta**: Cria uma conta atrelada ao usuário.
+- **Listar Contas**: Lista todas as contas de cada usuário.
 
 ## Requisitos do Sistema
 - O sistema deve permitir apenas valores positivos nos depósitos.
 - O limite de saques é de 3 por dia, com um teto de R$ 500,00 por saque.
 - O saldo nunca pode ficar negativo.
 - O extrato deve mostrar todas as movimentações realizadas.
+- O usuário pode ter várias contas, mas cada usuário só pode ter um CPF
 
 ## Estrutura do Projeto
 
@@ -59,4 +63,3 @@ Este software está licenciado sob os termos da **MIT License**.
 
 ## Desenvolvedor
 ⌨️ Desenvolvido por [Vitor Bittencourt](https://github.com/vitorVBD)
-
