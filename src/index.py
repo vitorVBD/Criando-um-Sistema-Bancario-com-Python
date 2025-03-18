@@ -7,6 +7,14 @@ from models.historico import Historico
 from models.pessoa_fisica import Pessoa_Fisica
 from models.saque import Saque
 from models.transacao import Transacao
+from models.contas_iterador import Contas_Iterador
+
+def log_transacao(func):
+    def envelope(*args, **kwargs):
+        resultado = func(*args, **kwargs)
+        print(f"{datetime.now()}: {func.__name__.upper()}")
+        return resultado
+    return envelope
 
 def menu(): 
     menu = """\n
@@ -32,6 +40,7 @@ def recuperar_conta_cliente(cliente):
         return
     return cliente.contas[0]
 
+@log_transacao
 def transacao(clientes):
     cpf = input("Digite o CPF do cliente: ")
     cliente = filtrar_cliente(cpf, clientes)
@@ -68,6 +77,8 @@ def transacao(clientes):
         
         cliente.realizar_transacao(conta, transacao)    
 
+
+@log_transacao
 def exibir_extrato(clientes):
     cpf = input("Digite o CPF do cliente: ")
     cliente = filtrar_cliente(cpf, clientes)
@@ -82,19 +93,20 @@ def exibir_extrato(clientes):
         return
     
     print("\n=================EXTRATO=================")
-    transacoes = conta.historico.transacoes
-
     extrato = ""
-    if not transacoes:
-        extrato = "Nenhuma transação realizada"
-    else:
-        for transacao in transacoes:
-            extrato += f"{transacao['tipo']}:\n\t Valor: R${transacao['valor']:.2f}:\n\t Data: {transacao['data']}\n"
+    tem_transacao = False
+    for transacao in conta.historico.gerar_relatorio(tipo_transacao="saque"):
+        tem_transacao = True
+        extrato += f"{transacao['tipo']}:\n\tR${transacao['valor']:.2f}:\n\t"
+    
+    if not tem_transacao:
+        extrato = "Não foram realizadas movimentações na conta"
 
     print(extrato)
     print(f"\nSaldo:\n\tR${conta.saldo:.2f}")
     print("========================================")
 
+@log_transacao
 def criar_conta(numero_conta, clientes, contas):
     cpf = input("Digite o CPF do cliente: ")
     cliente = filtrar_cliente(cpf, clientes)
@@ -114,6 +126,7 @@ def listar_contas(contas):
         print("=" * 100)
         print(textwrap.dedent(str(conta)))
 
+@log_transacao
 def criar_cliente(clientes):
     cpf = input("Digite o CPF do cliente: ")
     cliente = filtrar_cliente(cpf, clientes)
