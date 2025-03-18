@@ -1,151 +1,162 @@
 import textwrap
+from datetime import datetime
+from models.cliente import Cliente
+from models.conta_corrente import Conta_Corrente
+from models.deposito import Deposito
+from models.historico import Historico
+from models.pessoa_fisica import Pessoa_Fisica
+from models.saque import Saque
+from models.transacao import Transacao
 
 def menu(): 
     menu = """\n
     ===============MENU===============
 
-    [d] - Depositar
-    [s] - Sacar
-    [e] - Extrato
-    [nc] - Nova Conta
-    [lc] - Listar Contas
-    [nu] - Novo Usuário
-    [q] - Sair
+    [r]\tRealizar Transação
+    [e]\tExtrato
+    [nc]\tNova Conta
+    [lc]\tListar Contas
+    [nu]\tNovo Usuário
+    [q]\tSair
 
 =>"""
     return input(textwrap.dedent(menu))
 
-def deposit(balance, value, statement, number_of_deposits, deposit_historic):
-    if value > 0:
-        balance += value
-        statement = f"\nDepósito de R$ {value:.2f} realizado com sucesso! \nSeu saldo agora é de R$ {balance:.2f}\n"
-        number_of_deposits += 1
-        deposit_historic += f"\n{number_of_deposits}° depósito no valor de R$ {value:.2f}"
-        print(statement)
-    else:
-        print("O valor do depósito deve ser positivo")
-    return balance, statement, number_of_deposits, deposit_historic
+def filtrar_cliente(cpf, clientes):
+    clientes_filtrados = [cliente for cliente in clientes if cliente.cpf == cpf]
+    return clientes_filtrados[0] if clientes_filtrados else None
 
-def withdraw(*, balance, value, statement, number_of_withdrawals, withdrawals_historic, limit, WITHDRAW_LIMIT):
-    if value > limit:
-        print("Valor máximo de saque é de R$ 500")
-    elif value > balance:
-        print("Saldo insuficiente")
-        print(f"Seu saldo é de R$ {balance:.2f}")
-    elif number_of_withdrawals >= WITHDRAW_LIMIT:
-        print("Limite de saques diários atingido")
-    else:
-        balance -= value
-        statement = f"\nSaque realizado com sucesso! no valor de R$ {value:.2f}\nSeu saldo agora é de R$ {balance:.2f}\n"
-        number_of_withdrawals += 1
-        withdrawals_historic += f"\n{number_of_withdrawals}° saque no valor de R$ {value:.2f}"
-        print(statement)
-    return balance, statement, number_of_withdrawals, withdrawals_historic
+def recuperar_conta_cliente(cliente):
+    if not cliente.contas:
+        print("Cliente não possui conta")
+        return
+    return cliente.contas[0]
 
-def show_statement(balance, statement, deposit_historic, withdrawals_historic):
-    statement = f"\nSeu saldo é de R$ {balance:.2f}\n"
-    print(f"Historico de depositos: {deposit_historic}")
-    print(f"Histórico de saques: {withdrawals_historic}")
-    print(statement)
+def transacao(clientes):
+    cpf = input("Digite o CPF do cliente: ")
+    cliente = filtrar_cliente(cpf, clientes)
 
-def create_user(users):
-    cpf = input("Digite o CPF do usuário: ")
-    user = filter_user(cpf, users)
+    if not cliente:
+        print("Cliente não encontrado")
+        return
 
-    if user:
-        print("Usuário já cadastrado")
+    tipo_transacao = input(""""
+    "Digite o tipo de transação: 
+    [d]\tDeposito
+    [s]\tSaque
+    """)
+
+    if tipo_transacao == "d":
+        valor = float(input("Digite o valor do depósito: "))
+        transacao = Deposito(valor)
+        
+        conta = recuperar_conta_cliente(cliente)
+        if not conta:
+            print("Cliente não possui conta")
+            return
+    
+        cliente.realizar_transacao(conta, transacao)
+
+    elif tipo_transacao == "s":
+        valor = float(input("Digite o valor do saque: "))
+        transacao = Saque(valor)
+
+        conta = recuperar_conta_cliente(cliente)
+        if not conta:
+            print("Cliente não possui conta")
+            return
+        
+        cliente.realizar_transacao(conta, transacao)    
+
+def exibir_extrato(clientes):
+    cpf = input("Digite o CPF do cliente: ")
+    cliente = filtrar_cliente(cpf, clientes)
+
+    if not cliente:
+        print("Cliente não encontrado")
         return
     
-    name = input("Digite o nome completo: ")
-    birth_date = input("Digite a data de nascimento (dd-mm-aaaa): ")
-    address = input("Digite o endereço (logradouro, numero - bairro - cidade/sigla estado): ")
-
-    users.append({
-        "cpf": cpf,
-        "nome": name,
-        "data_nascimento": birth_date,
-        "endereco": address
-    })
-
-    print("Usuário cadastrado com sucesso")
-
-def filter_user(cpf, users):
-    users_filtered = [user for user in users if user["cpf"] == cpf]
-    return users_filtered[0] if users_filtered else None
-
-def create_account(account_number, users, AGENCY):
-    cpf = input("Digite o CPF do usuário: ")
-    user = filter_user(cpf, users)
-
-    if user:
-        print("Conta criada com sucesso")
-        return {
-            "agencia": AGENCY,
-            "numero": account_number,
-            "usuário": user
-        }
+    conta = recuperar_conta_cliente(cliente)
+    if not conta:
+        print("Cliente não possui conta")
+        return
     
-    print("Usuário não encontrado")
+    print("\n=================EXTRATO=================")
+    transacoes = conta.historico.transacoes
 
-def list_accounts(accounts):
-    for account in accounts:
-        line = f"Agência: {account['agencia']} - Conta: {account['numero']} - Titular: {account['usuário']['nome']}"
+    extrato = ""
+    if not transacoes:
+        extrato = "Nenhuma transação realizada"
+    else:
+        for transacao in transacoes:
+            extrato += f"{transacao['tipo']}:\n\t Valor: R${transacao['valor']:.2f}:\n\t Data: {transacao['data']}\n"
+
+    print(extrato)
+    print(f"\nSaldo:\n\tR${conta.saldo:.2f}")
+    print("========================================")
+
+def criar_conta(numero_conta, clientes, contas):
+    cpf = input("Digite o CPF do cliente: ")
+    cliente = filtrar_cliente(cpf, clientes)
+
+    if not cliente:
+        print("Cliente não encontrado")
+        return
+
+    conta = Conta_Corrente.nova_conta(cliente=cliente, numero=numero_conta)
+    contas.append(conta)
+    cliente.contas.append(conta)
+
+    print(f"Conta criada com sucesso! Número da conta: {numero_conta}")
+
+def listar_contas(contas):
+    for conta in contas:
         print("=" * 100)
-        print(textwrap.dedent(line))
+        print(textwrap.dedent(str(conta)))
 
+def criar_cliente(clientes):
+    cpf = input("Digite o CPF do cliente: ")
+    cliente = filtrar_cliente(cpf, clientes)
+
+    if cliente:
+        print("Cliente já cadastrado")
+        return
+    
+    nome = input("Digite o nome do cliente: ")
+    data_nascimento = input("Digite a data de nascimento do cliente (dd-mm-aaaa): ")
+    endereco = input("Digite o endereço do cliente (logradouro, nro - bairro - cidade/uf): ")
+
+    cliente = Pessoa_Fisica(cpf=cpf, nome=nome, data_nascimento=data_nascimento, endereco=endereco)
+    clientes.append(cliente)
+
+    print("Cliente cadastrado com sucesso!")
+    
 def main():
-
-    balance = 0
-    limit = 500
-    statement = ""
-    withdrawals_historic = ""
-    deposit_historic = ""
-    number_of_withdrawals = 0
-    number_of_deposits = 0
-    users = []
-    accounts = []
-    account_number = 1
-    WITHDRAW_LIMIT = 3
-    AGENCY = "0001"
+    clientes = []
+    contas = []
 
     while True:
-        option = menu()
+        opcao = menu()
 
-        if option == 'd':
+        if opcao == "r":
+            transacao(clientes)
 
-            value = float(input("Digite o valor do depósito: "))
-            balance, statement, number_of_deposits, deposit_historic = deposit(balance, value, statement, number_of_deposits, deposit_historic)
+        elif opcao == "e":
+            exibir_extrato(clientes)
 
-        elif option == 's':
+        elif opcao == "nc":
+            numero_conta = len(contas) + 1
+            criar_conta(numero_conta, clientes, contas)
 
-            value = float(input("Digite o valor do saque: "))
-            balance, statement, number_of_withdrawals, withdrawals_historic = withdraw(
-                balance = balance,
-                value = value,
-                statement = statement,
-                number_of_withdrawals = number_of_withdrawals,
-                withdrawals_historic = withdrawals_historic,
-                limit = limit,
-                WITHDRAW_LIMIT = WITHDRAW_LIMIT
-                )
+        elif opcao == "nu":
+            criar_cliente(clientes)
 
-        elif option == 'e':
-            show_statement(balance, statement, deposit_historic, withdrawals_historic)
+        elif opcao == "lc":
+            listar_contas(contas)
 
-        elif option == 'nc':
-            account = create_account(account_number, users, AGENCY)
-            
-            if account:
-                accounts.append(account)
-                account_number += 1
 
-        elif option == 'lc':
-            list_accounts(accounts)
-
-        elif option == 'nu':
-            create_user(users)
-
-        elif option == 'q':
+        elif opcao == "q":
+            print("Saindo do sistema")
             break
 
         else:
